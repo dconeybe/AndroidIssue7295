@@ -20,13 +20,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlin.time.measureTimedValue
 
-class MainActivity : ComponentActivity() {
+/**
+ * Enable this flag to run the setup that creates and deletes 10,000 documents.
+ * Once you have run this once, disable it to run the fetch tests.
+ */
+const val RUN_SETUP = true
 
-    /**
-     * Enable this flag to run the setup that creates and deletes 10,000 documents.
-     * Once you have run this once, disable it to run the fetch tests.
-     */
-    val RUN_SETUP = false
+const val FETCH_COUNT = 200
+
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,13 +37,12 @@ class MainActivity : ComponentActivity() {
         val totalTimeOfActiveCollectionMs = mutableStateListOf<Long>()
         val totalTimeOfInactiveCollectionMs = mutableStateListOf<Long>()
 
-        val fetchCount = 200
 
         lifecycleScope.launch {
             if(RUN_SETUP) {
                 createAndDeleteDocuments()
             } else {
-                repeat(fetchCount) {
+                repeat(FETCH_COUNT) {
                     val timedValue = measureTimedValue {
                         FirebaseFirestore.getInstance()
                             .collection("users/inactive/docs")
@@ -52,7 +53,7 @@ class MainActivity : ComponentActivity() {
                     totalTimeOfInactiveCollectionMs += timedValue.duration.inWholeMilliseconds
                 }
 
-                repeat(fetchCount) {
+                repeat(FETCH_COUNT) {
                     val timedValue = measureTimedValue {
                         FirebaseFirestore.getInstance()
                             .collection("users/active/docs")
