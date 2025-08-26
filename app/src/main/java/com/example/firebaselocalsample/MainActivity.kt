@@ -29,7 +29,7 @@ import kotlin.time.measureTimedValue
  * Enable this flag to run the setup that creates and deletes 10,000 documents.
  * Once you have run this once, disable it to run the fetch tests.
  */
-const val RUN_SETUP = true
+const val RUN_SETUP = false
 
 const val FETCH_COUNT = 200
 
