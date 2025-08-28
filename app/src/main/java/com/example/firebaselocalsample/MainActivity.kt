@@ -75,9 +75,9 @@ class MainActivity : ComponentActivity() {
                         deleteBatch = firestore.batch()
                         batchSize = 0
                     }
-
-                    check(batchSize == 0) { "batchSize should be 0, but got $batchSize" }
                 }
+
+                check(batchSize == 0) { "batchSize should be 0, but got $batchSize" }
                 setupDone.value = true
             } else {
                 repeat(FETCH_COUNT) {
