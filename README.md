@@ -6,10 +6,10 @@ This is a sample app to reproduce https://github.com/firebase/firebase-android-s
 1. Start the Firestore emulator (see instructions below).
 2. Open this directory in Android Studio.
 3. Change the build variant to "release" (optional, but gives more meaningful performance numbers).
-4. Change `RUN_SETUP` to `true` in `MainActivity.kt`.
-5. Run the app; wait for the UI to indicate that 10,000 documents have been created.
-6. Change `RUN_SETUP` back to `false` in `MainActivity.kt`.
-7. Run the app; wait for it to run 200 iterations of both "active" and "inactive" queries.
+4. Run the app.
+5. The first time the app runs it will create and delete 10,000 documents.
+6. Then the app will run queries 200 times on a non-existent collection and then on the collection
+   with the deleted documents.
 
 ## Starting the Firestore emulator
 
