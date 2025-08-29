@@ -4,12 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.firebaselocalsample.ui.theme.FirebaseLocalSampleTheme
 import com.google.firebase.Firebase
@@ -32,16 +39,6 @@ class MainActivity : ComponentActivity() {
 
   private lateinit var firestore: FirebaseFirestore
 
-  private sealed interface RunState {
-    data object NotStarted : RunState
-
-    data class Setup(val documentCreateCount: Int = 0, val documentDeleteCount: Int = 0) : RunState
-
-    data class Test(val setupResult: Setup? = null) : RunState
-
-    data class Done(val setupResult: Setup?) : RunState
-  }
-
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
@@ -49,8 +46,8 @@ class MainActivity : ComponentActivity() {
     firestore.useEmulator("10.0.2.2", 8080)
 
     val runState = mutableStateOf<RunState>(RunState.NotStarted)
-    val totalTimeOfActiveCollectionMs = mutableStateListOf<Long>()
-    val totalTimeOfInactiveCollectionMs = mutableStateListOf<Long>()
+    val activeTimesMillis = mutableStateListOf<Long>()
+    val inactiveTimesMillis = mutableStateListOf<Long>()
 
     lifecycleScope.launch {
       val activeCollectionRef = firestore.collection("users/active/docs")
@@ -105,12 +102,12 @@ class MainActivity : ComponentActivity() {
 
       repeat(FETCH_COUNT) {
         val timedValue = measureTimedValue { inactiveCollectionRef.get(Source.CACHE).await() }
-        totalTimeOfInactiveCollectionMs += timedValue.duration.inWholeMilliseconds
+        inactiveTimesMillis += timedValue.duration.inWholeMilliseconds
       }
 
       repeat(FETCH_COUNT) {
         val timedValue = measureTimedValue { activeCollectionRef.get(Source.CACHE).await() }
-        totalTimeOfActiveCollectionMs += timedValue.duration.inWholeMilliseconds
+        activeTimesMillis += timedValue.duration.inWholeMilliseconds
       }
 
       runState.value = RunState.Done(testState.setupResult)
@@ -118,66 +115,94 @@ class MainActivity : ComponentActivity() {
 
     setContent {
       FirebaseLocalSampleTheme {
-        Column(modifier = Modifier.systemBarsPadding()) {
-          val setupState: RunState.Setup? =
-            when (val state = runState.value) {
-              RunState.NotStarted -> null
-              is RunState.Setup -> state
-              is RunState.Test -> state.setupResult
-              is RunState.Done -> state.setupResult
-            }
-
-          if (setupState !== null) {
-            when (runState.value) {
-              RunState.NotStarted -> throw IllegalStateException("should never get here")
-              is RunState.Setup -> Text("Setup in progress...")
-              is RunState.Test,
-              is RunState.Done -> Text("Setup completed.")
-            }
-            Text("Created ${setupState.documentCreateCount} documents.")
-            Text("Deleted ${setupState.documentDeleteCount} documents.")
-          }
-
-          when (runState.value) {
-            RunState.NotStarted,
-            is RunState.Setup -> {}
-            is RunState.Test -> Text("Test in progress...")
-            is RunState.Done -> Text("Test completed.")
-          }
-
-          when (runState.value) {
-            RunState.NotStarted,
-            is RunState.Setup -> {}
-            is RunState.Test,
-            is RunState.Done -> {
-              Text(
-                text =
-                  "Average time of inactive collection: " +
-                    "${
-                                        String.format(
-                                            Locale.US,
-                                            "%.2f",
-                                            totalTimeOfInactiveCollectionMs.average(),
-                                        )
-                                    } ms" +
-                    "(n=${totalTimeOfInactiveCollectionMs.size})"
-              )
-              Text(
-                text =
-                  "Average time of active collection: " +
-                    "${
-                                        String.format(
-                                            Locale.US,
-                                            "%.2f",
-                                            totalTimeOfActiveCollectionMs.average(),
-                                        )
-                                    } ms " +
-                    "(n=${totalTimeOfActiveCollectionMs.size})"
-              )
-            }
-          }
-        }
+        MainScreen(
+          runState = runState.value,
+          activeTimesMillis = activeTimesMillis,
+          inactiveTimesMillis = inactiveTimesMillis,
+        )
       }
     }
   }
+}
+
+private sealed interface RunState {
+  data object NotStarted : RunState
+
+  data class Setup(val documentCreateCount: Int = 0, val documentDeleteCount: Int = 0) : RunState
+
+  data class Test(val setupResult: Setup? = null) : RunState
+
+  data class Done(val setupResult: Setup?) : RunState
+}
+
+@Composable
+private fun MainScreen(
+  runState: RunState,
+  activeTimesMillis: List<Long>,
+  inactiveTimesMillis: List<Long>,
+) {
+  Box(modifier = Modifier.systemBarsPadding()) {
+    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+      SetupText(runState)
+      TestText(
+        runState,
+        activeTimesMillis = activeTimesMillis,
+        inactiveTimesMillis = inactiveTimesMillis,
+      )
+    }
+  }
+}
+
+@Composable
+private fun SetupText(runState: RunState) {
+  val setupState: RunState.Setup =
+    when (runState) {
+      RunState.NotStarted -> return
+      is RunState.Setup -> runState
+      is RunState.Test -> runState.setupResult ?: return
+      is RunState.Done -> runState.setupResult ?: return
+    }
+
+  Text("Test Setup", textDecoration = TextDecoration.Underline)
+  Text("Created ${setupState.documentCreateCount} documents.")
+  Text("Deleted ${setupState.documentDeleteCount} documents.")
+
+  if (runState !is RunState.Setup) {
+    Text("Setup completed")
+  }
+
+  Spacer(Modifier.height(8.dp))
+}
+
+@Composable
+private fun TestText(
+  runState: RunState,
+  activeTimesMillis: List<Long>,
+  inactiveTimesMillis: List<Long>,
+) {
+  when (runState) {
+    RunState.NotStarted,
+    is RunState.Setup -> return
+    is RunState.Test,
+    is RunState.Done -> {}
+  }
+
+  Text("Test Execution", textDecoration = TextDecoration.Underline)
+  TestTimes("inactive", inactiveTimesMillis)
+  TestTimes("active", activeTimesMillis)
+
+  if (runState is RunState.Done) {
+    Text("Test completed")
+  }
+}
+
+@Composable
+private fun TestTimes(name: String, timesMillis: List<Long>) {
+  val average = timesMillis.average().takeIf { !it.isNaN() } ?: 0.0
+  val averageStr = String.format(Locale.US, "%.2f", average)
+  Text(name)
+  Text("    count: ${timesMillis.size}")
+  Text("    average: $averageStr ms")
+  Text("    min: ${timesMillis.minOrNull() ?: 0} ms")
+  Text("    max: ${timesMillis.maxOrNull() ?: 0} ms")
 }
