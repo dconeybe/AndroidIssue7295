@@ -20,6 +20,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Firebase local sample"
+rootProject.name = "Android Tombstone Issue 7295"
 
 include(":app")
