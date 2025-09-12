@@ -72,7 +72,8 @@ the problematic data.
     cd firebase-android-sdk
     ```
 
-2.  Fetch the pull request containing the fix and check it out.
+2.  *(Optional as of Sept 08, 2025, as the fix was merged into the main branch)*
+    Fetch the pull request containing the fix and check it out.
     ```bash
     git fetch origin pull/7301/head:PR7301_NoDocumentPerformanceFix
     git checkout PR7301_NoDocumentPerformanceFix
