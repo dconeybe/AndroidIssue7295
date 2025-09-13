@@ -24,6 +24,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.firestore
 import java.util.Locale
+import kotlin.random.Random
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -34,6 +35,13 @@ const val DOCUMENT_CREATE_AND_DELETE_COUNT = 10_000
 
 // As documented by Firestore
 const val MAX_FIRESTORE_BATCH_SIZE = 500
+
+enum class CollectionType {
+  Normal,
+  CollectionGroup,
+}
+
+val COLLECTION_TYPE = CollectionType.Normal
 
 class MainActivity : ComponentActivity() {
 
@@ -51,7 +59,6 @@ class MainActivity : ComponentActivity() {
 
     lifecycleScope.launch {
       val activeCollectionRef = firestore.collection("users/active/docs")
-      val inactiveCollectionRef = firestore.collection("users/inactive/docs")
 
       val setupCompletedDocRef = firestore.document("setup/completed")
       val setupCompleted =
@@ -72,7 +79,7 @@ class MainActivity : ComponentActivity() {
 
           repeat(DOCUMENT_CREATE_AND_DELETE_COUNT) {
             val documentRef = activeCollectionRef.document()
-            createBatch.set(documentRef, mapOf("foo" to it))
+            createBatch.set(documentRef, mapOf("foo" to Random.nextInt(100)))
             deleteBatch.delete(documentRef)
             batchSize++
 
@@ -101,12 +108,25 @@ class MainActivity : ComponentActivity() {
         }
 
       repeat(FETCH_COUNT) {
-        val timedValue = measureTimedValue { inactiveCollectionRef.get(Source.CACHE).await() }
+        val inactiveCollectionRef = firestore.collection(Random.nextAlphanumericString(20))
+        val timedValue = measureTimedValue {
+          val query =
+            when (COLLECTION_TYPE) {
+              CollectionType.Normal -> inactiveCollectionRef
+              CollectionType.CollectionGroup -> firestore.collectionGroup(inactiveCollectionRef.id)
+            }.whereGreaterThan("foo", 50)
+          query.get(Source.CACHE).await()
+        }
         inactiveTimesMillis += timedValue.duration.inWholeMilliseconds
       }
 
       repeat(FETCH_COUNT) {
-        val timedValue = measureTimedValue { activeCollectionRef.get(Source.CACHE).await() }
+        val query =
+          when (COLLECTION_TYPE) {
+            CollectionType.Normal -> activeCollectionRef
+            CollectionType.CollectionGroup -> firestore.collectionGroup(activeCollectionRef.id)
+          }.whereGreaterThan("foo", 50)
+        val timedValue = measureTimedValue { query.get(Source.CACHE).await() }
         activeTimesMillis += timedValue.duration.inWholeMilliseconds
       }
 
@@ -200,9 +220,32 @@ private fun TestText(
 private fun TestTimes(name: String, timesMillis: List<Long>) {
   val average = timesMillis.average().takeIf { !it.isNaN() } ?: 0.0
   val averageStr = String.format(Locale.US, "%.2f", average)
+  val totalStr = String.format(Locale.US, "%,d", timesMillis.sum())
   Text(name)
   Text("    count: ${timesMillis.size}")
+  Text("    total: $totalStr ms")
   Text("    average: $averageStr ms")
   Text("    min: ${timesMillis.minOrNull() ?: 0} ms")
   Text("    max: ${timesMillis.maxOrNull() ?: 0} ms")
 }
+
+/**
+ * Generates and returns a string containing random alphanumeric characters.
+ *
+ * The characters returned are taken from the set of characters comprising of the 10 numeric digits
+ * and the 26 lowercase English characters.
+ *
+ * @param length the number of random characters to generate and include in the returned string;
+ *   must be greater than or equal to zero.
+ * @return a string containing the given number of random alphanumeric characters.
+ * @hide
+ */
+fun Random.nextAlphanumericString(length: Int): String {
+  require(length >= 0) { "invalid length: $length" }
+  return (0 until length).map { ALPHANUMERIC_ALPHABET.random(this) }.joinToString(separator = "")
+}
+
+// The set of characters comprising of the 10 numeric digits and the 26 lowercase letters of the
+// English alphabet with some characters removed that can look similar in different fonts, like
+// '1', 'l', and 'i'.
+private const val ALPHANUMERIC_ALPHABET = "23456789abcdefghjkmnpqrstvwxyz"
