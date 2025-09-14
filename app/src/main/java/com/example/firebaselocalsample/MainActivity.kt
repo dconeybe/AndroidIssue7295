@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
         }
 
       var isInactiveWarmup = true
-      repeat(FETCH_COUNT) {
+      repeat(FETCH_COUNT + 1) {
         val inactiveCollectionRef = firestore.collection(Random.nextAlphanumericString(20))
         val timedValue = measureTimedValue {
           val query =
