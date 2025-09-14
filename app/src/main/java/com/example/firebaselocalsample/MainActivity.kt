@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
           RunState.Test(setupState).also { runState.value = it }
         }
 
+      var isInactiveWarmup = true
       repeat(FETCH_COUNT) {
         val inactiveCollectionRef = firestore.collection(Random.nextAlphanumericString(20))
         val timedValue = measureTimedValue {
@@ -117,17 +118,26 @@ class MainActivity : ComponentActivity() {
             }.whereGreaterThan("foo", 50)
           query.get(Source.CACHE).await()
         }
-        inactiveTimesMillis += timedValue.duration.inWholeMilliseconds
+        if (isInactiveWarmup) {
+          isInactiveWarmup = false
+        } else {
+          inactiveTimesMillis += timedValue.duration.inWholeMilliseconds
+        }
       }
 
-      repeat(FETCH_COUNT) {
+      var isActiveWarmup = true
+      repeat(FETCH_COUNT + 1) {
         val query =
           when (COLLECTION_TYPE) {
             CollectionType.Normal -> activeCollectionRef
             CollectionType.CollectionGroup -> firestore.collectionGroup(activeCollectionRef.id)
           }.whereGreaterThan("foo", 50)
         val timedValue = measureTimedValue { query.get(Source.CACHE).await() }
-        activeTimesMillis += timedValue.duration.inWholeMilliseconds
+        if (isActiveWarmup) {
+          isActiveWarmup = false
+        } else {
+          activeTimesMillis += timedValue.duration.inWholeMilliseconds
+        }
       }
 
       runState.value = RunState.Done(testState.setupResult)
