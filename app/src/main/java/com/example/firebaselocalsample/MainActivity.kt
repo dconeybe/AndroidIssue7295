@@ -49,6 +49,7 @@ val availableProcessors = Runtime.getRuntime().availableProcessors()
 class MainActivity : ComponentActivity() {
 
   private lateinit var firestore: FirebaseFirestore
+  private var firestoreBuildId: String? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -149,6 +150,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       FirebaseLocalSampleTheme {
         MainScreen(
+          firestoreBuildId = firestoreBuildId,
           runState = runState.value,
           activeTimesMillis = activeTimesMillis,
           inactiveTimesMillis = inactiveTimesMillis,
@@ -170,13 +172,14 @@ private sealed interface RunState {
 
 @Composable
 private fun MainScreen(
+  firestoreBuildId: String?,
   runState: RunState,
   activeTimesMillis: List<Long>,
   inactiveTimesMillis: List<Long>,
 ) {
   Box(modifier = Modifier.systemBarsPadding()) {
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-      EnvText()
+      EnvText(firestoreBuildId)
       SetupText(runState)
       TestText(
         runState,
@@ -188,8 +191,9 @@ private fun MainScreen(
 }
 
 @Composable
-private fun EnvText() {
+private fun EnvText(firestoreBuildId: String?) {
   Text("Test Environment", textDecoration = TextDecoration.Underline)
+  Text("firestore build id: $firestoreBuildId")
   Text("availableProcessors: $availableProcessors")
   Text("android sdk version: ${Build.VERSION.SDK_INT}")
   Spacer(Modifier.height(8.dp))
@@ -271,3 +275,5 @@ fun Random.nextAlphanumericString(length: Int): String {
 // English alphabet with some characters removed that can look similar in different fonts, like
 // '1', 'l', and 'i'.
 private const val ALPHANUMERIC_ALPHABET = "23456789abcdefghjkmnpqrstvwxyz"
+
+fun FirebaseFirestore.fetchBuildId(): String? = document("foo/FetchBuildId_vbncckz7ar").id
