@@ -27,12 +27,22 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.firestore
 import java.util.Locale
+import kotlin.math.roundToLong
 import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.measureTimedValue
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format.MonthNames
+import kotlinx.datetime.format.Padding
+import kotlinx.datetime.format.char
+import kotlinx.datetime.toLocalDateTime
 
 const val FETCH_COUNT = 200
 
@@ -73,6 +83,9 @@ class MainActivity : ComponentActivity() {
     val inactiveTimesMillis = mutableStateListOf<Long>()
 
     lifecycleScope.launch {
+      Log.i(RESULTS_LOG_TAG, "Previous Test Results:")
+      testResultsDao.logAllToLogcat()
+
       val startTime = Clock.System.now()
       val activeCollectionRef = firestore.collection("users/active/docs")
 
@@ -158,19 +171,22 @@ class MainActivity : ComponentActivity() {
 
       runState.value = RunState.Done(testState.setupResult)
 
-      Persistence.TestResult(
-          uid = 0,
-          firestoreBuildId = firestoreBuildId,
-          date = startTime,
-          count = FETCH_COUNT,
-          total = activeTimesMillis.sum().milliseconds,
-          average = activeTimesMillis.average().milliseconds,
-          min = activeTimesMillis.min().milliseconds,
-          max = activeTimesMillis.max().milliseconds,
-        )
-        .also { testResult -> testResultsDao.insert(testResult) }
+      testResultsDao.insert(
+        Persistence.TestResult(
+            uid = 0,
+            firestoreBuildId = firestoreBuildId,
+            date = startTime,
+            count = FETCH_COUNT,
+            total = activeTimesMillis.sum().milliseconds,
+            average = activeTimesMillis.average().milliseconds,
+            min = activeTimesMillis.min().milliseconds,
+            max = activeTimesMillis.max().milliseconds,
+          )
+          .also { Log.i(RESULTS_LOG_TAG, "New Test Result: ${it.toLogcatLogString()}") }
+      )
 
-      testResultsDao.getAll().forEach { Log.i("zzyzx", "$it") }
+      Log.i(RESULTS_LOG_TAG, "Previous Test Results:")
+      testResultsDao.logAllToLogcat()
     }
 
     setContent {
@@ -303,3 +319,73 @@ fun Random.nextAlphanumericString(length: Int): String {
 private const val ALPHANUMERIC_ALPHABET = "23456789abcdefghjkmnpqrstvwxyz"
 
 fun FirebaseFirestore.fetchBuildId(): String = document("foo/FetchBuildId_vbncckz7ar").id
+
+val logcatLogStringLocalDateTimeFormat =
+  LocalDateTime.Format {
+    monthName(MonthNames.ENGLISH_ABBREVIATED)
+    char(' ')
+    day(Padding.ZERO)
+    chars(", ")
+    year(Padding.ZERO)
+    chars(" @ ")
+    hour(Padding.ZERO)
+    char(':')
+    minute(Padding.ZERO)
+    char(':')
+    second(Padding.ZERO)
+  }
+
+fun Int.formattedWithThousandsSeparator(): String = toLong().formattedWithThousandsSeparator()
+
+fun Long.formattedWithThousandsSeparator(): String = String.format(Locale.US, "%,d", this)
+
+fun Persistence.TestResult.toLogcatLogString() = buildString {
+  fun appendMs(key: String, duration: Duration) = apply {
+    append(' ')
+    append(key)
+    append('=')
+    append(duration.inWholeMilliseconds.formattedWithThousandsSeparator())
+  }
+
+  val localDate = date.toLocalDateTime(TimeZone.currentSystemDefault())
+  logcatLogStringLocalDateTimeFormat.formatTo(this, localDate)
+  append(": count=").append(count)
+  append(" firestoreBuildId=").append(firestoreBuildId)
+  appendMs("total", total).append(" ms")
+  appendMs("average", average)
+  appendMs("min", min)
+  appendMs("max", max)
+}
+
+const val RESULTS_LOG_TAG = "tresbyrfhg"
+
+fun Persistence.TestResult.logToLogcat() {
+  Log.i(RESULTS_LOG_TAG, toLogcatLogString())
+}
+
+suspend fun Persistence.TestResultsDao.logAllToLogcat() {
+  val testResults = getAll()
+  Log.i(RESULTS_LOG_TAG, "Got ${testResults.size} test results")
+  withContext(Dispatchers.Default) {
+    testResults.sortedBy { it.date }.forEach { it.logToLogcat() }
+
+    data class AverageInfo(val n: Int, val average: Double)
+
+    testResults
+      .groupBy { it.firestoreBuildId }
+      .mapValues { entry ->
+        val average =
+          entry.value.map { testResult -> testResult.total.inWholeMilliseconds }.average()
+        AverageInfo(n = entry.value.size, average = average)
+      }
+      .toSortedMap()
+      .forEach { (firestoreBuildId, averageInfo) ->
+        Log.i(
+          "tresbyrfhg",
+          "firestoreBuildId=$firestoreBuildId " +
+            "n=${averageInfo.n.formattedWithThousandsSeparator()} " +
+            "average=${averageInfo.average.roundToLong().formattedWithThousandsSeparator()} ms",
+        )
+      }
+  }
+}

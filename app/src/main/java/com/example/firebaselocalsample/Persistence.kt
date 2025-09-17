@@ -49,5 +49,7 @@ object Persistence {
     @Query("SELECT * FROM test_results") suspend fun getAll(): List<TestResult>
 
     @Insert suspend fun insert(testResult: TestResult)
+
+    @Query("DELETE FROM test_results") suspend fun clear()
   }
 }
