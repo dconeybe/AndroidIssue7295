@@ -2,6 +2,7 @@ package com.example.firebaselocalsample
 
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import androidx.room.Room
 import com.example.firebaselocalsample.ui.theme.FirebaseLocalSampleTheme
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.FirebaseFirestore
@@ -26,6 +28,8 @@ import com.google.firebase.firestore.Source
 import com.google.firebase.firestore.firestore
 import java.util.Locale
 import kotlin.random.Random
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.measureTimedValue
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -49,11 +53,18 @@ val availableProcessors = Runtime.getRuntime().availableProcessors()
 class MainActivity : ComponentActivity() {
 
   private lateinit var firestore: FirebaseFirestore
-  private var firestoreBuildId: String? = null
+  private lateinit var firestoreBuildId: String
+  private lateinit var testResultsDao: Persistence.TestResultsDao
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+
+    testResultsDao =
+      Room.databaseBuilder(applicationContext, Persistence.AppDatabase::class.java, "dbgqamg2bd")
+        .build()
+        .testResultsDao()
+
     firestore = Firebase.firestore
     firestore.useEmulator("10.0.2.2", 8080)
 
@@ -62,6 +73,7 @@ class MainActivity : ComponentActivity() {
     val inactiveTimesMillis = mutableStateListOf<Long>()
 
     lifecycleScope.launch {
+      val startTime = Clock.System.now()
       val activeCollectionRef = firestore.collection("users/active/docs")
 
       val setupCompletedDocRef = firestore.document("setup/completed")
@@ -145,6 +157,20 @@ class MainActivity : ComponentActivity() {
       }
 
       runState.value = RunState.Done(testState.setupResult)
+
+      Persistence.TestResult(
+          uid = 0,
+          firestoreBuildId = firestoreBuildId,
+          date = startTime,
+          count = FETCH_COUNT,
+          total = activeTimesMillis.sum().milliseconds,
+          average = activeTimesMillis.average().milliseconds,
+          min = activeTimesMillis.min().milliseconds,
+          max = activeTimesMillis.max().milliseconds,
+        )
+        .also { testResult -> testResultsDao.insert(testResult) }
+
+      testResultsDao.getAll().forEach { Log.i("zzyzx", "$it") }
     }
 
     setContent {
@@ -276,4 +302,4 @@ fun Random.nextAlphanumericString(length: Int): String {
 // '1', 'l', and 'i'.
 private const val ALPHANUMERIC_ALPHABET = "23456789abcdefghjkmnpqrstvwxyz"
 
-fun FirebaseFirestore.fetchBuildId(): String? = document("foo/FetchBuildId_vbncckz7ar").id
+fun FirebaseFirestore.fetchBuildId(): String = document("foo/FetchBuildId_vbncckz7ar").id
