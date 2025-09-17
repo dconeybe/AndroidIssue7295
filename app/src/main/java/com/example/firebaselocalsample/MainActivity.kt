@@ -12,11 +12,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -44,7 +55,7 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
 
-    testHistory = mutableStateOf<List<AverageInfo>?>(null)
+    testHistory = mutableStateOf(null)
 
     val firestore = Firebase.firestore
     // firestore.useEmulator("10.0.2.2", 8080)
@@ -75,6 +86,7 @@ class MainActivity : ComponentActivity() {
             if (testRunner.isInactiveTestEnabled) testRunner.inactiveTimesMillis else null,
           testHistory = testHistory.value,
           onReRunClick = ::startTest,
+          onClearHistoryClick = ::clearHistory,
         )
       }
     }
@@ -102,8 +114,18 @@ class MainActivity : ComponentActivity() {
         launch { updateTestHistory("Updated", testRunner.testResultsDao, testHistory) }
       }
   }
+
+  private fun clearHistory() {
+    lifecycleScope.launch {
+      withContext(Dispatchers.Default) {
+        testRunner.testResultsDao.clear()
+        updateTestHistory("Cleared", testRunner.testResultsDao, testHistory)
+      }
+    }
+  }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScreen(
   firestoreBuildId: String?,
@@ -112,18 +134,49 @@ private fun MainScreen(
   inactiveTimesMillis: List<Long>?,
   testHistory: List<AverageInfo>?,
   onReRunClick: () -> Unit,
+  onClearHistoryClick: () -> Unit,
 ) {
-  Box(modifier = Modifier.systemBarsPadding()) {
-    Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-      EnvText(firestoreBuildId)
-      SetupText(runState)
-      TestText(
-        runState,
-        activeTimesMillis = activeTimesMillis,
-        inactiveTimesMillis = inactiveTimesMillis,
-        onReRunClick = onReRunClick,
+  var showMenu by remember { mutableStateOf(false) }
+
+  Scaffold(
+    topBar = {
+      TopAppBar(
+        title = { Text("Firebase Local Sample") },
+        actions = {
+          IconButton(onClick = { showMenu = !showMenu }) {
+            Icon(Icons.Default.MoreVert, contentDescription = "More")
+          }
+          DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+            DropdownMenuItem(
+              text = { Text("Re-Run Test") },
+              onClick = {
+                showMenu = false
+                onReRunClick()
+              },
+            )
+            DropdownMenuItem(
+              text = { Text("Clear History") },
+              onClick = {
+                showMenu = false
+                onClearHistoryClick()
+              },
+            )
+          }
+        },
       )
-      TestHistoryText(testHistory)
+    }
+  ) { innerPadding ->
+    Box(modifier = Modifier.padding(innerPadding).systemBarsPadding()) {
+      Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+        EnvText(firestoreBuildId)
+        SetupText(runState)
+        TestText(
+          runState,
+          activeTimesMillis = activeTimesMillis,
+          inactiveTimesMillis = inactiveTimesMillis,
+        )
+        TestHistoryText(testHistory)
+      }
     }
   }
 }
@@ -162,7 +215,6 @@ private fun TestText(
   runState: RunState,
   activeTimesMillis: List<Long>?,
   inactiveTimesMillis: List<Long>?,
-  onReRunClick: () -> Unit,
 ) {
   when (runState) {
     RunState.NotStarted,
@@ -178,7 +230,6 @@ private fun TestText(
 
   if (runState is RunState.Done) {
     Text("Test completed")
-    Button(onClick = onReRunClick) { Text("Re-run Test") }
   }
 }
 
