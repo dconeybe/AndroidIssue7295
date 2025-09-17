@@ -1,0 +1,73 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "585a60bdc675b53a4a21dd408caf80d9",
+    "entities": [
+      {
+        "tableName": "test_results",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `firestoreBuildId` TEXT NOT NULL, `date` TEXT NOT NULL, `count` INTEGER NOT NULL, `total` INTEGER NOT NULL, `average` INTEGER NOT NULL, `min` INTEGER NOT NULL, `max` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "firestoreBuildId",
+            "columnName": "firestoreBuildId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "count",
+            "columnName": "count",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "total",
+            "columnName": "total",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "average",
+            "columnName": "average",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "min",
+            "columnName": "min",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "max",
+            "columnName": "max",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "uid"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '585a60bdc675b53a4a21dd408caf80d9')"
+    ]
+  }
+}
