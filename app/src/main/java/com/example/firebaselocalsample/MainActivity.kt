@@ -1,5 +1,6 @@
 package com.example.firebaselocalsample
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,6 +43,8 @@ enum class CollectionType {
 }
 
 val COLLECTION_TYPE = CollectionType.Normal
+
+val availableProcessors = Runtime.getRuntime().availableProcessors()
 
 class MainActivity : ComponentActivity() {
 
@@ -173,6 +176,7 @@ private fun MainScreen(
 ) {
   Box(modifier = Modifier.systemBarsPadding()) {
     Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+      EnvText()
       SetupText(runState)
       TestText(
         runState,
@@ -181,6 +185,14 @@ private fun MainScreen(
       )
     }
   }
+}
+
+@Composable
+private fun EnvText() {
+  Text("Test Environment", textDecoration = TextDecoration.Underline)
+  Text("availableProcessors: $availableProcessors")
+  Text("android sdk version: ${Build.VERSION.SDK_INT}")
+  Spacer(Modifier.height(8.dp))
 }
 
 @Composable
