@@ -32,8 +32,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.room.Room
+import com.example.firebaselocalsample.BuildConfig as AppBuildConfig
 import com.example.firebaselocalsample.ui.theme.FirebaseLocalSampleTheme
 import com.google.firebase.Firebase
+import com.google.firebase.firestore.BuildConfig.VERSION_NAME as FIRESTORE_VERSION
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.firestore
 import java.util.Locale
@@ -43,9 +45,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private data object DefaultTestConfig {
-  val useFirestoreEmulator = true
-  val isDeleteDocumentsInSetupEnabled = true
-  val isInactiveTestEnabled = true
+  const val USE_FIRESTORE_EMULATOR = AppBuildConfig.USE_FIRESTORE_EMULATOR
+  const val IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED =
+    AppBuildConfig.IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED
+  const val IS_INACTIVE_TEST_ENABLED = AppBuildConfig.IS_INACTIVE_TEST_ENABLED
 }
 
 class MainActivity : ComponentActivity() {
@@ -61,7 +64,7 @@ class MainActivity : ComponentActivity() {
     testHistory = mutableStateOf(null)
 
     val firestore = Firebase.firestore
-    if (DefaultTestConfig.useFirestoreEmulator) {
+    if (DefaultTestConfig.USE_FIRESTORE_EMULATOR) {
       firestore.useEmulator("10.0.2.2", 8080)
     }
 
@@ -77,8 +80,8 @@ class MainActivity : ComponentActivity() {
             )
             .build()
             .testResultsDao(),
-        isDeleteDocumentsInSetupEnabled = DefaultTestConfig.isDeleteDocumentsInSetupEnabled,
-        isInactiveTestEnabled = DefaultTestConfig.isInactiveTestEnabled,
+        isDeleteDocumentsInSetupEnabled = DefaultTestConfig.IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED,
+        isInactiveTestEnabled = DefaultTestConfig.IS_INACTIVE_TEST_ENABLED,
       )
 
     setContent {
@@ -190,7 +193,7 @@ private fun MainScreen(
 private fun EnvText(firestoreBuildId: String?) {
   Spacer(Modifier.height(8.dp))
   Text("Test Environment", textDecoration = TextDecoration.Underline)
-  Text("firestore build id: $firestoreBuildId")
+  Text("firestore build id: $firestoreBuildId ($FIRESTORE_VERSION)")
   Text("availableProcessors: $availableProcessors")
   Text("android sdk version: ${Build.VERSION.SDK_INT}")
 }

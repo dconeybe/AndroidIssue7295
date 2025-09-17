@@ -20,6 +20,10 @@ android {
     versionName = "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+    buildConfigField("boolean", "USE_FIRESTORE_EMULATOR", "true")
+    buildConfigField("boolean", "IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED", "true")
+    buildConfigField("boolean", "IS_INACTIVE_TEST_ENABLED", "true")
   }
 
   buildTypes {
@@ -33,7 +37,10 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
-  buildFeatures { compose = true }
+  buildFeatures {
+    buildConfig = true
+    compose = true
+  }
 }
 
 kotlin {
