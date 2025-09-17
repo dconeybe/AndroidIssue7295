@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
@@ -166,7 +165,7 @@ private fun MainScreen(
       )
     }
   ) { innerPadding ->
-    Box(modifier = Modifier.padding(innerPadding).systemBarsPadding()) {
+    Box(modifier = Modifier.padding(innerPadding)) {
       Column(modifier = Modifier.padding(horizontal = 12.dp)) {
         EnvText(firestoreBuildId)
         SetupText(runState)
