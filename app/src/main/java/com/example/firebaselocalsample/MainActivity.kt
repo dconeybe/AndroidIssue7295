@@ -42,7 +42,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val availableProcessors = Runtime.getRuntime().availableProcessors()
+private data object DefaultTestConfig {
+  val useFirestoreEmulator = true
+  val isDeleteDocumentsInSetupEnabled = true
+  val isInactiveTestEnabled = true
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -57,7 +61,9 @@ class MainActivity : ComponentActivity() {
     testHistory = mutableStateOf(null)
 
     val firestore = Firebase.firestore
-    // firestore.useEmulator("10.0.2.2", 8080)
+    if (DefaultTestConfig.useFirestoreEmulator) {
+      firestore.useEmulator("10.0.2.2", 8080)
+    }
 
     testRunner =
       TestRunner(
@@ -71,8 +77,8 @@ class MainActivity : ComponentActivity() {
             )
             .build()
             .testResultsDao(),
-        isDeleteDocumentsInSetupEnabled = true,
-        isInactiveTestEnabled = true,
+        isDeleteDocumentsInSetupEnabled = DefaultTestConfig.isDeleteDocumentsInSetupEnabled,
+        isInactiveTestEnabled = DefaultTestConfig.isInactiveTestEnabled,
       )
 
     setContent {
@@ -276,3 +282,5 @@ suspend fun updateTestHistory(
     testResults.logAllToLogcat()
   }
 }
+
+private val availableProcessors = Runtime.getRuntime().availableProcessors()
