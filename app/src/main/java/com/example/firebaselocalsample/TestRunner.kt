@@ -27,7 +27,7 @@ private val COLLECTION_TYPE = CollectionType.Normal
 
 class TestRunner(
   val firestore: FirebaseFirestore,
-  val firestoreBuildId: String,
+  val firestoreSdkVersion: String,
   val testResultsDao: Persistence.TestResultsDao,
   val isDeleteDocumentsInSetupEnabled: Boolean = true,
   val isInactiveTestEnabled: Boolean = true,
@@ -131,7 +131,7 @@ class TestRunner(
     testResultsDao.insert(
       Persistence.TestResult(
           uid = 0,
-          firestoreBuildId = firestoreBuildId,
+          firestoreBuildId = firestoreSdkVersion,
           date = startTime,
           count = FETCH_COUNT,
           total = activeTimesMillis.sum().milliseconds,

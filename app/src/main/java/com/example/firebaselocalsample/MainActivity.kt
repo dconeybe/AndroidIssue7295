@@ -35,8 +35,7 @@ import androidx.room.Room
 import com.example.firebaselocalsample.BuildConfig as AppBuildConfig
 import com.example.firebaselocalsample.ui.theme.FirebaseLocalSampleTheme
 import com.google.firebase.Firebase
-import com.google.firebase.firestore.BuildConfig.VERSION_NAME as FIRESTORE_VERSION
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.BuildConfig as FirestoreBuildConfig
 import com.google.firebase.firestore.firestore
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -44,11 +43,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@Suppress("KotlinConstantConditions")
 private data object DefaultTestConfig {
-  const val USE_FIRESTORE_EMULATOR = AppBuildConfig.USE_FIRESTORE_EMULATOR
-  const val IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED =
-    AppBuildConfig.IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED
-  const val IS_INACTIVE_TEST_ENABLED = AppBuildConfig.IS_INACTIVE_TEST_ENABLED
+  val useFirestoreEmulator: Boolean
+    get() = AppBuildConfig.USE_FIRESTORE_EMULATOR
+
+  val isDeleteDocumentsInSetupEnabled
+    get() = AppBuildConfig.IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED
+
+  val isInactiveTestEnabled
+    get() = AppBuildConfig.IS_INACTIVE_TEST_ENABLED
 }
 
 class MainActivity : ComponentActivity() {
@@ -64,14 +68,14 @@ class MainActivity : ComponentActivity() {
     testHistory = mutableStateOf(null)
 
     val firestore = Firebase.firestore
-    if (DefaultTestConfig.USE_FIRESTORE_EMULATOR) {
+    if (DefaultTestConfig.useFirestoreEmulator) {
       firestore.useEmulator("10.0.2.2", 8080)
     }
 
     testRunner =
       TestRunner(
         firestore = firestore,
-        firestoreBuildId = firestore.fetchBuildId(),
+        firestoreSdkVersion = FirestoreBuildConfig.VERSION_NAME,
         testResultsDao =
           Room.databaseBuilder(
               applicationContext,
@@ -80,14 +84,14 @@ class MainActivity : ComponentActivity() {
             )
             .build()
             .testResultsDao(),
-        isDeleteDocumentsInSetupEnabled = DefaultTestConfig.IS_DELETE_DOCUMENTS_IN_SETUP_ENABLED,
-        isInactiveTestEnabled = DefaultTestConfig.IS_INACTIVE_TEST_ENABLED,
+        isDeleteDocumentsInSetupEnabled = DefaultTestConfig.isDeleteDocumentsInSetupEnabled,
+        isInactiveTestEnabled = DefaultTestConfig.isInactiveTestEnabled,
       )
 
     setContent {
       FirebaseLocalSampleTheme {
         MainScreen(
-          firestoreBuildId = testRunner.firestoreBuildId,
+          firestoreSdkVersion = testRunner.firestoreSdkVersion,
           runState = testRunner.runState.value,
           activeTimesMillis = testRunner.activeTimesMillis,
           inactiveTimesMillis =
@@ -136,7 +140,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScreen(
-  firestoreBuildId: String?,
+  firestoreSdkVersion: String,
   runState: RunState,
   activeTimesMillis: List<Long>?,
   inactiveTimesMillis: List<Long>?,
@@ -176,7 +180,7 @@ private fun MainScreen(
   ) { innerPadding ->
     Box(modifier = Modifier.padding(innerPadding)) {
       Column(modifier = Modifier.padding(horizontal = 12.dp)) {
-        EnvText(firestoreBuildId)
+        EnvText(firestoreSdkVersion)
         SetupText(runState)
         TestText(
           runState,
@@ -190,10 +194,10 @@ private fun MainScreen(
 }
 
 @Composable
-private fun EnvText(firestoreBuildId: String?) {
+private fun EnvText(firestoreSdkVersion: String) {
   Spacer(Modifier.height(8.dp))
   Text("Test Environment", textDecoration = TextDecoration.Underline)
-  Text("firestore build id: $firestoreBuildId ($FIRESTORE_VERSION)")
+  Text("firestore sdk version: $firestoreSdkVersion")
   Text("availableProcessors: $availableProcessors")
   Text("android sdk version: ${Build.VERSION.SDK_INT}")
 }
@@ -270,8 +274,6 @@ private fun TestTimes(name: String, timesMillis: List<Long>?) {
   Text("    min: ${timesMillis.minOrNull() ?: 0} ms")
   Text("    max: ${timesMillis.maxOrNull() ?: 0} ms")
 }
-
-private fun FirebaseFirestore.fetchBuildId(): String = document("foo/FetchBuildId_vbncckz7ar").id
 
 suspend fun updateTestHistory(
   label: String,
